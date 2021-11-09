@@ -2,17 +2,40 @@ from pandas._config.config import options
 import streamlit as st
 import pandas as pd
 import numpy as np
+import os 
+import sys
+from io import BytesIO, StringIO
+
+import plotly.express as px
+import plotly.graph_objects as go
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error,r2_score,mean_squared_error
+from sklearn.feature_extraction.text import CountVectorizer
+
+import io
 
 
+#Wordcloud
+import re
+import operator
+import nltk
+nltk.download('stopwords')
+nltk.download('punkt')
+from nltk.tokenize import word_tokenize 
+from nltk.corpus import stopwords
+
+set(stopwords.words('english'))
+from wordcloud import WordCloud
+from nltk.probability import FreqDist
+import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 
-header = st.container()
-dataset = st.container()
-features = st.container()
-model_traning = st.container()
+import streamlit.components.v1 as stc
+
+
 
 
 st.markdown(
@@ -20,101 +43,142 @@ st.markdown(
     '''
     <style>
     .main{
-        background-color: #F5F5F5;
+        background-color: #FFFFFF;
     }
     </style>
     ''',
     unsafe_allow_html= True
 )
 
-@st.cache
-def get_data(filename):
-    dataset=pd.read_csv(filename)
 
-    return dataset
+def main():
 
-
-
-
-with header:
-    st.title('Hello Hello Hello!!!!!!!!!!!!!!!!!!!!1')
-    st.text('In this project i look into the transitions of texies in new york......')
-
-
-with dataset:
-    st.header(' New York city texy dataset')
-    #dataset=pd.read_csv('housing.csv')
-
-    dataset = get_data('data/housing.csv')
-    st.write(dataset.head(5))
-    
-    Price = dataset['PRICE']
-    
-    st.bar_chart(Price)
-
-
-with features:
-    st.header('The features I created')
-    st.markdown('* **First Feature** I created this feature because of this.....I calculated it using this logic.....*')
-    st.markdown('* **Second Feature** I created this feature because of this.....I calculated it using this logic.....*')
-
-
-
-with model_traning:
-    st.header('Time to create model')
-
+    st.title(" ---->Jobshie<----")
+    st.title("")
+    st.title("Find out the most important keywords in the description of a job.")
+    st.title("")
+    st.subheader("Copy the full job description and paste it down below:")
     sel_col, disp_col = st.columns(2)
-    random_state = sel_col.slider('What should be the max dept of the model', min_value = 10, max_value = 100, value = 20, step = 10 )
+    job_description = sel_col.text_input('',' Paste your full job description here ')
 
-    n_estimators = sel_col.selectbox('How many trees should be there', options = [100,200,300,400,'No Limit'],index = 0)
+    if st.button("--->SHOW ME THE RESULTS<---"):
 
-    # Fitting Random Forest Regression to the Training set
-    from sklearn.ensemble import RandomForestRegressor
+	
 
+
+
+        def tokenizer(text):
+            ''' a function to create a word cloud based on the input text parameter'''
+            ## Clean the Text
+            # Lower
+            clean_text = text.lower()
+            # remove punctuation
+            clean_text = re.sub(r'[^\w\s]', '', clean_text)
+            # remove trailing spaces
+            clean_text = clean_text.strip()
+            # remove numbers
+            clean_text = re.sub('[0-9]+', '', clean_text)
+            # tokenize 
+            clean_text = word_tokenize(clean_text)
+            # remove stop words
+            stop = stopwords.words('english')
+            clean_text = [w for w in clean_text if not w in stop] 
+            return(clean_text)
+
+
+        job_description = tokenizer(job_description)
+        job_description1 = ' '.join(job_description)
     
 
-    if n_estimators == 'No Limit':
-        regressor = RandomForestRegressor(random_state = random_state)
-    else:
-        regressor = RandomForestRegressor(n_estimators = n_estimators, random_state = random_state)
+        # initializing dict to store frequency of each element
+        elements_count = {}
+        # iterating over the elements for frequency
+        for element in job_description:
+        # checking whether it is in the dict or not
+            if element in elements_count:
+                # incerementing the count by 1
+                elements_count[element] += 1
+            else:
+                # setting the count to 1
+                elements_count[element] = 1
+            # printing the elements frequencies
 
-    #x = dataset.drop('PRICE', axis = 1)
-    #y = dataset['PRICE']
-
-    sel_col.text('Here is a list of features in my data:')
-    sel_col.write(dataset.columns)
-
-    input_feature = sel_col.text_input('Which feature should be use as input feature','ZN')
-
-    #x = dataset.drop('PRICE', axis = 1)
-    x = dataset[[input_feature]]
-    y = dataset['PRICE']
-
-    
+        for key, value in elements_count.items():
+        
+            print(f"{key}: {value}")
 
 
-    
-    # Splitting the dataset into the Training set and Test set
-    from sklearn.model_selection import train_test_split
-    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size = 0.25, random_state =  random_state)
+        df =pd.DataFrame(elements_count.items(), columns=['Word', 'Frequency'])
+        df.index += 1
+        st.write(df)
+
+        Frequency = df['Frequency']
+        Word = df['Word']
+        
+        if job_description is not None:
+
+            def create_word_cloud(jd):
+                corpus = jd
+                fdist = FreqDist(corpus)
+                #print(fdist.most_common(100))
+                words = ' '.join(corpus)
+                words = words.split()
+                    
+                    # create a empty dictionary  
+                data = dict() 
+                    #  Get frequency for each words where word is the key and the count is the value  
+                for word in (words):     
+                    word = word.lower()     
+                    data[word] = data.get(word, 0) + 1 
+                # Sort the dictionary in reverse order to print first the most used terms
+                dict(sorted(data.items(), key=operator.itemgetter(1),reverse=True)) 
+                word_cloud = WordCloud(width = 800, height = 800, 
+                background_color ='white',max_words = 500) 
+                word_cloud.generate_from_frequencies(data) 
 
 
- 
-    regressor.fit(X_train, y_train)
+            #st.bar_chart(df["Frequency","Words"])
 
-    y_pred = regressor.predict(X_test)
-
-    # Evaluating the Algorithm
-    from sklearn import metrics
+            import plotly.express as px
 
 
-    disp_col.subheader('Mean absolute error of the model is:')
-    disp_col.write(mean_absolute_error(y_test, y_pred))
+            fig = px.bar(df, x="Word", y="Frequency", barmode='group', height=400)
+            # st.dataframe(df) # if need to display dataframe
+            st.plotly_chart(fig)
 
 
-    disp_col.subheader('Mean squared error of the model is:')
-    disp_col.write(mean_squared_error(y_test,y_pred))
+            text1 = job_description1
+            # Create some sample text
+            
+
+            # Create and generate a word cloud image:
+            wordcloud1 = WordCloud().generate(text1)
+            
+            # Display the generated image:
+            st.set_option('deprecation.showPyplotGlobalUse', False)
+
+            st.subheader("Word frequency in the job description:")
+            plt.imshow(wordcloud1, interpolation='bilinear')
+            plt.axis("off")
+            plt.show()
+            st.pyplot()
+
+            st.title("5 most frequent keywords are:")
+            st.write(df.sort_values(by=['Frequency']).head(5))
+
+            st.subheader("")
+            st.subheader("")
+            st.subheader("")
+
+            st.subheader("-->If you want full guidance on Resume building,contact us on contact.jobshie@gmail.com.")
+
+            
+
+            st.subheader("-->We will provide you the full resume building guidance and hold your hand till you got your dream job.")
+
+            st.subheader("-->Contact us now at contact.jobshie@gmail.com")
 
 
-    disp_col.subheader('R square score of the model is:')
-    disp_col.write(r2_score(y_test, y_pred))
+if __name__ == '__main__':
+	main()
+
