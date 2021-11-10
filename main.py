@@ -164,7 +164,7 @@ def main():
             st.pyplot()
 
             st.title("5 most frequent keywords are:")
-            st.write(df.sort_values(by=['Frequency']).tail(-5))
+            st.write(df.sort_values(by=['Frequency'],ascending=False).tail(5))
 
             st.subheader("")
             st.subheader("")
